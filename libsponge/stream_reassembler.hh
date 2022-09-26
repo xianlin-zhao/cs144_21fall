@@ -53,6 +53,10 @@ class StreamReassembler {
     //! \brief Is the internal state empty (other than the output stream)?
     //! \returns `true` if no substrings are waiting to be assembled
     bool empty() const;
+
+    size_t getExpectId() const { return expectId; }
+
+    size_t getRemainCap() const { return _output.remaining_capacity(); }
 };
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH
