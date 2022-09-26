@@ -3,10 +3,12 @@
 
 #include "byte_stream.hh"
 #include "tcp_config.hh"
+#include "tcp_header.hh"
 #include "tcp_segment.hh"
 #include "wrapping_integers.hh"
 
 #include <functional>
+#include <list>
 #include <queue>
 
 //! \brief The "sender" part of a TCP implementation.
@@ -31,6 +33,18 @@ class TCPSender {
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
+
+    unsigned int RTO;
+    unsigned int elapsed;
+    bool timeFlag{false};
+
+    uint64_t recvAckNo{0};
+    uint16_t recvWindow{1};
+
+    std::list<TCPSegment> outSegs{};
+    unsigned int consecutNum{0};
+    bool synSent{false};
+    bool finSent{false};
 
   public:
     //! Initialize a TCPSender
