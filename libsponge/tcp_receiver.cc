@@ -15,17 +15,20 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     string data = seg.payload().copy();
     if (!syn && !seg.header().syn)
         return;
+
     bool eof = false;
     if (seg.header().fin)
         fin = true, eof = true;
-    if (seg.header().syn && !syn) {
-        syn = true;
-        isn = seq;
-        _reassembler.push_substring(data, 0, eof);
-    } else {
-        size_t finId = unwrap(seq, isn, _reassembler.getExpectId()) - 1;
-        _reassembler.push_substring(data, finId, eof);
+    if (seg.header().syn && !syn)
+        syn = true, isn = seq;
+    if (!data.empty()) {
+        if (seg.header().syn || seq != isn) {
+            size_t idx = unwrap(seq - (!(seg.header().syn)), isn, _reassembler.getExpectId());
+            _reassembler.push_substring(data, idx, eof);
+        }
     }
+    if (fin && _reassembler.empty())
+        _reassembler.stream_out().end_input();
 }
 
 optional<WrappingInt32> TCPReceiver::ackno() const {
