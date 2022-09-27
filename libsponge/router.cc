@@ -29,13 +29,49 @@ void Router::add_route(const uint32_t route_prefix,
     cerr << "DEBUG: adding route " << Address::from_ipv4_numeric(route_prefix).ip() << "/" << int(prefix_length)
          << " => " << (next_hop.has_value() ? next_hop->ip() : "(direct)") << " on interface " << interface_num << "\n";
 
-    DUMMY_CODE(route_prefix, prefix_length, next_hop, interface_num);
+    RouteEntry newEntry(route_prefix, prefix_length, next_hop, interface_num);
+    routeTable.push_back(newEntry);
     // Your code here.
+}
+
+bool Router::matchPrefix(uint32_t dstIp, uint32_t prefix, uint8_t preLen) {
+    if (preLen == 0)
+        return true;
+    return (dstIp >> (32 - preLen)) == (prefix >> (32 - preLen));
+}
+
+int Router::findInTable(uint32_t dstIp) {
+    int ansId = -1;
+    int sz = routeTable.size();
+    uint32_t nowMaxLen = 0;
+
+    for (int i = 0; i < sz; i++) {
+        uint32_t prefix = routeTable[i].prefix;
+        uint8_t preLen = routeTable[i].preLen;
+        if (matchPrefix(dstIp, prefix, preLen)) {
+            if (preLen >= nowMaxLen) {
+                nowMaxLen = preLen;
+                ansId = i;
+            }
+        }
+    }
+    return ansId;
 }
 
 //! \param[in] dgram The datagram to be routed
 void Router::route_one_datagram(InternetDatagram &dgram) {
-    DUMMY_CODE(dgram);
+    uint32_t dstIp = dgram.header().dst;
+    uint8_t ttl = dgram.header().ttl;
+    if (ttl <= 1)
+        return;
+    int goalEntryId = findInTable(dstIp);
+    if (goalEntryId < 0)
+        return;
+    dgram.header().ttl -= 1;
+    if (routeTable[goalEntryId].nextHop.has_value())
+        interface(routeTable[goalEntryId].interId).send_datagram(dgram, routeTable[goalEntryId].nextHop.value());
+    else
+        interface(routeTable[goalEntryId].interId).send_datagram(dgram, Address::from_ipv4_numeric(dstIp));
     // Your code here.
 }
 
